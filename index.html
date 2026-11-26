@@ -1030,7 +1030,7 @@
             <span class="text-[10px] text-slate-400">PC / Laptop</span>
           </div>
           <p class="text-[10.5px] text-slate-400 leading-relaxed">
-            Mở TikTok/YouTube ở tab bên cạnh, bấm nút dưới & chọn <strong>"Chia sẻ âm thanh tab"</strong>.
+            Mở TikTok/YouTube ở tab bên cạnh, bấm nút dưới &amp; chọn <strong>"Chia sẻ âm thanh tab"</strong>.
           </p>
           <div class="flex items-center gap-2">
             <button id="btnTabCaptureStart" type="button" class="flex-1 py-2 px-3 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/40 text-sky-100 text-xs font-semibold transition">
@@ -1110,12 +1110,12 @@
 
         <!-- Run AI Auto-Sync Button -->
         <button id="btnRunAISync" type="button" class="btn-gradient w-full py-3.5 px-4 rounded-2xl text-white font-bold text-xs flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50">
-          <span>✨ AI Tự nghe & Tạo Lyric khớp nhạc</span>
+          <span>✨ AI Tự nghe &amp; Tạo Lyric khớp nhạc</span>
         </button>
 
         <div id="aiLoadingBox" class="hidden p-3 rounded-xl bg-indigo-950/60 border border-indigo-400/35 flex items-center gap-3">
           <div class="w-4 h-4 rounded-full border-2 border-indigo-300/30 border-t-indigo-300 spinner shrink-0"></div>
-          <p id="aiLoadingText" class="text-xs text-indigo-100">AI đang nghe & đồng bộ từng câu hát...</p>
+          <p id="aiLoadingText" class="text-xs text-indigo-100">AI đang nghe &amp; đồng bộ từng câu hát...</p>
         </div>
 
         <div id="aiFeedbackBox" class="hidden p-3 rounded-xl text-xs leading-relaxed"></div>
@@ -1174,7 +1174,7 @@
         <!-- Editable Lyric Script Textarea -->
         <div class="space-y-1.5">
           <div class="flex items-center justify-between">
-            <label for="lyricScriptTextarea" class="text-xs font-semibold text-white">Kịch bản lời & mốc giây</label>
+            <label for="lyricScriptTextarea" class="text-xs font-semibold text-white">Kịch bản lời &amp; mốc giây</label>
             <span class="text-[10.5px] text-slate-400">Dùng <code class="text-amber-300">[từ sáng]</code></span>
           </div>
           <textarea
@@ -1231,7 +1231,7 @@
           <div class="grid grid-cols-2 gap-2" id="themeSelectorGrid">
             <button type="button" data-theme="midnight_nebula" class="theme-card p-2.5 rounded-xl text-left border border-indigo-400/70 bg-gradient-to-br from-indigo-950/70 via-slate-900 to-pink-950/50">
               <div class="text-xs font-semibold text-white">Midnight Nebula</div>
-              <div class="text-[10px] text-slate-400">Đêm sao & ánh hồng</div>
+              <div class="text-[10px] text-slate-400">Đêm sao &amp; ánh hồng</div>
             </button>
             <button type="button" data-theme="sakura_rose" class="theme-card p-2.5 rounded-xl text-left border border-white/10 bg-gradient-to-br from-pink-950/75 via-slate-950 to-rose-950/60">
               <div class="text-xs font-semibold text-slate-100">Sakura Rose</div>
@@ -1247,7 +1247,7 @@
             </button>
             <button type="button" data-theme="sunset_gold" class="theme-card col-span-2 p-2.5 rounded-xl text-left border border-white/10 bg-gradient-to-br from-amber-950/75 via-orange-950/50 to-rose-950/50">
               <div class="text-xs font-semibold text-slate-100">Sunset Gold</div>
-              <div class="text-[10px] text-slate-400">Hoàng hôn vàng ấm & hào quang rực</div>
+              <div class="text-[10px] text-slate-400">Hoàng hôn vàng ấm &amp; hào quang rực</div>
             </button>
           </div>
         </div>
@@ -1556,8 +1556,9 @@
 
       function formatTimestampTag(sec) {
         const safe = Math.max(0, Number.isFinite(sec) ? sec : 0);
-        const m = String(Math.floor(safe / 60)).padStart(2, '0');
-        const s = (safe % 60).toFixed(2).padStart(5, '0');
+        const totalCs = Math.round(safe * 100);
+        const m = String(Math.floor(totalCs / 6000)).padStart(2, '0');
+        const s = ((totalCs % 6000) / 100).toFixed(2).padStart(5, '0');
         return `[${m}:${s}]`;
       }
 
@@ -1879,7 +1880,7 @@
         lineCountText.textContent = `${lyricLines.length} dòng`;
         interactiveLineList.innerHTML = '';
 
-        lyricLines.forEach((line, idx) => {
+        lyricLines.forEach((line) => {
           const btn = document.createElement('button');
           btn.type = 'button';
           btn.className = 'w-full text-left px-2.5 py-2 rounded-xl bg-white/[0.04] hover:bg-indigo-500/20 border border-white/[0.07] flex items-center gap-2 transition';
@@ -2407,6 +2408,8 @@
       const VALID_MEDIA_RX = /\.(mp3|wav|m4a|aac|ogg|flac|opus|mp4|mov|webm|m4v)$/i;
 
       function clearLoadedAudio() {
+        audioPlayer.onloadedmetadata = null;
+        audioPlayer.onerror = null;
         try { audioPlayer.pause(); } catch (_) {}
         audioPlayer.removeAttribute('src');
         audioPlayer.load();
@@ -2453,7 +2456,7 @@
         mAudioBadge.textContent = `🎵 ${title}`;
         syncVolume();
 
-        audioPlayer.addEventListener('loadedmetadata', () => {
+        audioPlayer.onloadedmetadata = () => {
           const rawDur = audioPlayer.duration;
           const dur = Number.isFinite(rawDur) && rawDur > 0 && rawDur < 36000 ? rawDur : 45;
           state.fullAudioDuration = dur;
@@ -2465,11 +2468,13 @@
           applyTrimBounds();
           loadedFileMeta.textContent = `⏱ ${formatTime(dur)} • 📦 ${formatBytes(file.size)}`;
           showToast(`✅ Đã nạp "${title}" (${formatTime(dur)})!`);
-        }, { once: true });
+          seekTo(0);
+          setPlaying(true, true);
+        };
 
-        audioPlayer.addEventListener('error', () => {
+        audioPlayer.onerror = () => {
           showToast('⚠️ Trình duyệt không giải mã được file này. Hãy thử MP3/WAV/MP4 chuẩn.', 3800);
-        }, { once: true });
+        };
 
         audioPlayer.load();
       }
@@ -2483,7 +2488,7 @@
         state.totalDuration = Number(Math.max(4, state.trimEnd - state.trimStart).toFixed(1));
         inputTotalDur.value = String(state.totalDuration);
         rebuildParsedLines();
-        if (state.currentTime >= state.totalDuration) seekTo(0);
+        seekTo(state.currentTime >= state.totalDuration ? 0 : state.currentTime);
       }
 
       async function startTabCapture() {
@@ -2619,11 +2624,15 @@
         updateTimelineUI(clamped);
       }
 
-      function setPlaying(playing, fromGesture = false) {
-        state.isPlaying = Boolean(playing);
+      function syncPlayButtonsUI() {
         playIcon.textContent = state.isPlaying ? '⏸' : '▶';
         playText.textContent = state.isPlaying ? 'Tạm dừng' : 'Phát';
         mPlayIcon.textContent = state.isPlaying ? '⏸' : '▶';
+      }
+
+      function setPlaying(playing, fromGesture = false) {
+        state.isPlaying = Boolean(playing);
+        syncPlayButtonsUI();
 
         if (fromGesture) initWebAudio();
 
@@ -2636,7 +2645,11 @@
             }
             const p = audioPlayer.play();
             if (p && typeof p.catch === 'function') {
-              p.catch(() => showToast('Chạm nút Phát (▶) để mở khóa âm thanh trên thiết bị nhé!'));
+              p.catch(() => {
+                state.isPlaying = false;
+                syncPlayButtonsUI();
+                showToast('Chạm nút Phát (▶) để mở khóa âm thanh trên thiết bị nhé!');
+              });
             }
             state.lastSyncMedia = state.currentTime;
             state.lastSyncWall = performance.now();
@@ -2744,8 +2757,20 @@
           return;
         }
 
+        const typedKey = (inputGeminiKey.value || '').trim();
         const savedKey = getSavedApiKey();
-        const apiKey = savedKey || "";
+        const apiKey = typedKey || savedKey;
+
+        if (!apiKey) {
+          highlightApiKeyBox();
+          showToast('⚠️ Vui lòng dán Gemini API Key trước khi chạy AI!');
+          return;
+        }
+
+        if (typedKey && typedKey !== savedKey) {
+          try { localStorage.setItem(STORAGE_API_KEY, typedKey); } catch (_) {}
+          refreshApiKeyUI();
+        }
 
         btnRunAISync.disabled = true;
         aiFeedbackBox.classList.add('hidden');
@@ -2810,9 +2835,7 @@
             if (res.status === 400 || res.status === 403) {
               highlightApiKeyBox();
               throw new Error(
-                savedKey
-                  ? `API Key cá nhân bị từ chối (mã ${res.status}). Vui lòng kiểm tra lại mã AIza... trong khung Gemini API Key ở trên.`
-                  : `Cần nhập Gemini API Key miễn phí khi chạy trên GitHub Pages (mã ${res.status}). Hãy lấy key miễn phí tại Google AI Studio và dán vào khung phía trên!`
+                `API Key cá nhân bị từ chối (mã ${res.status}). Vui lòng kiểm tra lại mã AIza... trong khung Gemini API Key ở trên.`
               );
             }
             if (res.status === 429) {
@@ -2835,25 +2858,47 @@
           inputFileName.value = tsName;
           if (NEBULA_THEMES[parsed.theme]) state.theme = parsed.theme;
 
-          const linesScript = parsed.lines
+          const offset = state.trimStart || 0;
+          const hasTrimWindow = state.fullAudioDuration > 0 && (offset > 0 || state.trimEnd < state.fullAudioDuration - 0.5);
+          const normalizedLines = parsed.lines
             .filter((l) => l && String(l.text || '').trim())
-            .map((l) => `${formatTimestampTag(Math.max(0, Number(l.time) || 0))} ${String(l.text).trim()}`)
+            .map((l) => ({ time: Math.max(0, Number(l.time) || 0), text: String(l.text).trim() }));
+
+          const trimmedLines = hasTrimWindow
+            ? normalizedLines.filter((l) => l.time >= offset - 0.5 && l.time <= state.trimEnd + 0.5)
+            : normalizedLines;
+
+          const targetLines = trimmedLines.length ? trimmedLines : normalizedLines;
+          const linesScript = targetLines
+            .map((l) => `${formatTimestampTag(Math.max(0, l.time - offset))} ${l.text}`)
             .join('\n');
 
           state.scriptText = linesScript;
           lyricScriptTextarea.value = linesScript;
 
-          const lastT = Number(parsed.lines[parsed.lines.length - 1].time) || 10;
-          state.totalDuration = Math.max(state.totalDuration, Number((lastT + 4.0).toFixed(1)));
-          state.chorusStart = Math.max(0, Number(parsed.chorusStart) || Number((state.totalDuration * 0.25).toFixed(1)));
-          state.chorusEnd = Math.max(state.chorusStart + 2, Number(parsed.chorusEnd) || Number((state.totalDuration * 0.8).toFixed(1)));
+          const lastT = targetLines.length ? Math.max(0, targetLines[targetLines.length - 1].time - offset) : 10;
+          if (!hasTrimWindow) {
+            state.totalDuration = Math.max(state.totalDuration, Number((lastT + 4.0).toFixed(1)));
+          }
+
+          const rawChorusStart = Number(parsed.chorusStart);
+          const rawChorusEnd = Number(parsed.chorusEnd);
+          const adjChorusStart = Number.isFinite(rawChorusStart)
+            ? Math.max(0, Math.min(state.totalDuration - 2, rawChorusStart - offset))
+            : Number((state.totalDuration * 0.25).toFixed(1));
+          const adjChorusEnd = Number.isFinite(rawChorusEnd)
+            ? Math.max(adjChorusStart + 2, Math.min(state.totalDuration, rawChorusEnd - offset))
+            : Number((state.totalDuration * 0.8).toFixed(1));
+
+          state.chorusStart = Number(adjChorusStart.toFixed(1));
+          state.chorusEnd = Number(adjChorusEnd.toFixed(1));
 
           syncAppearanceControls();
           rebuildParsedLines();
           saveProjectToLocal();
 
           aiFeedbackBox.className = 'p-3 rounded-xl bg-emerald-500/15 border border-emerald-400/40 text-xs text-emerald-200';
-          aiFeedbackBox.textContent = `✅ Đã tạo & đồng bộ ${parsed.lines.length} câu hát cho "${tsName}"!`;
+          aiFeedbackBox.textContent = `✅ Đã tạo & đồng bộ ${targetLines.length} câu hát cho "${tsName}"!`;
           aiFeedbackBox.classList.remove('hidden');
 
           closeMobileDrawer();
@@ -2986,21 +3031,23 @@
           scheduleLofiBeat();
 
           if (state.isPlaying && !isUserScrubbing) {
-            if (state.hasUserAudio && !audioPlayer.paused && !audioPlayer.ended) {
-              const rawT = Math.max(0, (audioPlayer.currentTime || 0) - state.trimStart);
-              if (Math.abs(rawT - state.lastSyncMedia) > 0.001) {
-                state.lastSyncMedia = rawT;
-                state.lastSyncWall = now;
-              }
-              const smoothT = state.lastSyncMedia + Math.min(0.06, (now - state.lastSyncWall) / 1000);
-              state.currentTime = Math.abs(smoothT - rawT) > 0.08 ? rawT : smoothT;
+            if (state.hasUserAudio) {
+              if (!audioPlayer.paused && !audioPlayer.ended) {
+                const rawT = Math.max(0, (audioPlayer.currentTime || 0) - state.trimStart);
+                if (Math.abs(rawT - state.lastSyncMedia) > 0.001) {
+                  state.lastSyncMedia = rawT;
+                  state.lastSyncWall = now;
+                }
+                const smoothT = state.lastSyncMedia + Math.min(0.06, (now - state.lastSyncWall) / 1000);
+                state.currentTime = Math.abs(smoothT - rawT) > 0.08 ? rawT : smoothT;
 
-              if (state.currentTime >= state.totalDuration) {
+                if (state.currentTime >= state.totalDuration) {
+                  seekTo(0);
+                }
+              } else if (audioPlayer.ended) {
                 seekTo(0);
+                setPlaying(true);
               }
-            } else if (state.hasUserAudio && audioPlayer.ended) {
-              seekTo(0);
-              setPlaying(true);
             } else {
               state.currentTime += dt;
               if (state.currentTime >= state.totalDuration) {
@@ -3136,8 +3183,8 @@
       document.getElementById('btnCleanDesktop').addEventListener('click', () => setCleanMode(true));
       document.getElementById('btnCleanMobile').addEventListener('click', () => setCleanMode(true));
 
-      // Exit Clean Mode on click/tap anywhere
-      stageEl.addEventListener('click', () => {
+      // Exit Clean Mode on click/tap anywhere in stage area (including black letterbox bars)
+      stageArea.addEventListener('click', () => {
         if (state.cleanMode) setCleanMode(false);
       });
 
@@ -3177,15 +3224,17 @@
         syncVolume();
       });
 
+      const stopScrubbing = () => { isUserScrubbing = false; };
       [seekSlider, mSeekSlider].forEach((sl) => {
         sl.addEventListener('pointerdown', () => { isUserScrubbing = true; });
         sl.addEventListener('input', () => {
           const val = parseFloat(sl.value);
           if (Number.isFinite(val)) seekTo(val);
         });
-        sl.addEventListener('pointerup', () => { isUserScrubbing = false; });
-        sl.addEventListener('change', () => { isUserScrubbing = false; });
+        sl.addEventListener('change', stopScrubbing);
       });
+      window.addEventListener('pointerup', stopScrubbing);
+      window.addEventListener('pointercancel', stopScrubbing);
 
       // Native <label> File Pickers
       [inputAudioFile, inputVideoFile, inputFallbackFile].forEach((inp) => {
@@ -3401,8 +3450,15 @@
 
         if (isInput) return;
 
-        // If Lyrics tab is active and user presses Space, record tap timestamp if Tap-to-Sync is open
-        const lyricsTabActive = !document.getElementById('panel-lyrics').classList.contains('hidden');
+        // Only trigger Tap-to-Sync on Space when the Lyrics panel is actually visible
+        const isMobile = window.innerWidth < 900;
+        const inspectorVisible = !state.cleanMode && (
+          isMobile
+            ? mobileDrawer.classList.contains('is-open')
+            : !document.body.classList.contains('sidebar-hidden')
+        );
+        const lyricsTabActive = inspectorVisible && !document.getElementById('panel-lyrics').classList.contains('hidden');
+
         if (lyricsTabActive && e.code === 'Space') {
           e.preventDefault();
           recordTapTimestamp();
