@@ -1046,7 +1046,7 @@
         <!-- Gemini API Key Manager Card -->
         <div id="apiKeyCard" class="p-3.5 rounded-2xl bg-slate-950/75 border border-amber-400/35 space-y-2.5">
           <div class="flex items-center justify-between gap-2">
-            <h3 class="text-xs font-bold text-white">🔑 Gemini API Key (Dùng AI trên GitHub Pages)</h3>
+            <h3 class="text-xs font-bold text-white">🔑 Gemini API Key (Tự đổi model &amp; chống lỗi 503)</h3>
           </div>
 
           <div id="apiKeyStatusBadge" class="px-2.5 py-1.5 rounded-xl bg-amber-500/15 border border-amber-400/35 text-[11px] font-medium text-amber-200">
@@ -1113,9 +1113,15 @@
           <span>✨ AI Tự nghe &amp; Tạo Lyric khớp nhạc</span>
         </button>
 
-        <div id="aiLoadingBox" class="hidden p-3 rounded-xl bg-indigo-950/60 border border-indigo-400/35 flex items-center gap-3">
-          <div class="w-4 h-4 rounded-full border-2 border-indigo-300/30 border-t-indigo-300 spinner shrink-0"></div>
-          <p id="aiLoadingText" class="text-xs text-indigo-100">AI đang nghe &amp; đồng bộ từng câu hát...</p>
+        <!-- Anti-Hang Loading Box with live fallback status + Cancel button -->
+        <div id="aiLoadingBox" class="hidden p-3 rounded-xl bg-indigo-950/60 border border-indigo-400/35 flex items-center justify-between gap-2.5">
+          <div class="flex items-center gap-2.5 min-w-0 flex-1">
+            <div class="w-4 h-4 rounded-full border-2 border-indigo-300/30 border-t-indigo-300 spinner shrink-0"></div>
+            <p id="aiLoadingText" class="text-[11.5px] text-indigo-100 leading-snug break-words">AI đang nghe &amp; đồng bộ từng câu hát...</p>
+          </div>
+          <button id="btnCancelAI" type="button" class="shrink-0 px-2.5 py-1 rounded-lg bg-rose-500/25 hover:bg-rose-500/40 border border-rose-400/40 text-rose-200 text-[11px] font-semibold transition">
+            ✕ Hủy
+          </button>
         </div>
 
         <div id="aiFeedbackBox" class="hidden p-3 rounded-xl text-xs leading-relaxed"></div>
@@ -1295,11 +1301,22 @@
       'use strict';
 
       /* =========================================================================
-       * 1. CONSTANTS, STORAGE KEYS & DEFAULT "AN THẦN" PRESET
+       * 1. CONSTANTS, STORAGE KEYS, FALLBACK MODELS & DEFAULT "AN THẦN" PRESET
        * ========================================================================= */
       const STORAGE_API_KEY = 'lyric_studio_gemini_api_key';
       const STORAGE_PROJECT_KEY = 'lyric_studio_project_v1';
-      const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
+
+      // Danh sách model ưu tiên tự động chuyển dự phòng khi quá tải / 503 / timeout
+      const GEMINI_MODELS = [
+        'gemini-2.5-flash',
+        'gemini-flash-latest',
+        'gemini-2.0-flash',
+        'gemini-2.0-flash-lite'
+      ];
+
+      function getGeminiEndpoint(modelName) {
+        return `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent`;
+      }
 
       const DEFAULT_SCRIPT = [
         '[00:00.30] Nói chung anh chỉ là [thuốc an thần]',
@@ -1425,6 +1442,9 @@
         tapIndex: 0,
         cleanMode: false,
 
+        aiCancelController: null,
+        aiBusy: false,
+
         cam: { tx: 0, ty: 0, rx: 4, ry: 7, rz: -1, scale: 1.25, vTx: 0, vTy: 0, vRx: 0, vRy: 0, vRz: 0, vScale: 0 },
         cursor: { x: 40, y: 65, tx: 40, ty: 65, opacity: 1 },
 
@@ -1512,6 +1532,7 @@
       const btnRunAISync         = document.getElementById('btnRunAISync');
       const aiLoadingBox         = document.getElementById('aiLoadingBox');
       const aiLoadingText        = document.getElementById('aiLoadingText');
+      const btnCancelAI          = document.getElementById('btnCancelAI');
       const aiFeedbackBox        = document.getElementById('aiFeedbackBox');
 
       // Tab 2 Controls
@@ -1585,6 +1606,60 @@
           .toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
           .slice(0, 26);
         return `${clean || 'lyric_code'}.ts`;
+      }
+
+      function sleepWithCancel(ms, signal) {
+        return new Promise((resolve, reject) => {
+          if (signal && signal.aborted) {
+            const err = new Error('Đã hủy theo yêu cầu người dùng.');
+            err.code = 'USER_CANCELLED';
+            reject(err);
+            return;
+          }
+          const onAbort = () => {
+            clearTimeout(timer);
+            const err = new Error('Đã hủy theo yêu cầu người dùng.');
+            err.code = 'USER_CANCELLED';
+            reject(err);
+          };
+          const timer = setTimeout(() => {
+            if (signal) signal.removeEventListener('abort', onAbort);
+            resolve();
+          }, ms);
+          if (signal) signal.addEventListener('abort', onAbort, { once: true });
+        });
+      }
+
+      // Chuyển File sang Base64 bất đồng bộ (chống đơ UI trên điện thoại với file 10-18MB)
+      function fileToBase64Async(file, signal) {
+        return new Promise((resolve, reject) => {
+          if (signal && signal.aborted) {
+            const err = new Error('Đã hủy theo yêu cầu người dùng.');
+            err.code = 'USER_CANCELLED';
+            reject(err);
+            return;
+          }
+          const reader = new FileReader();
+          const onAbort = () => {
+            try { reader.abort(); } catch (_) {}
+            const err = new Error('Đã hủy theo yêu cầu người dùng.');
+            err.code = 'USER_CANCELLED';
+            reject(err);
+          };
+          if (signal) signal.addEventListener('abort', onAbort, { once: true });
+
+          reader.onload = () => {
+            if (signal) signal.removeEventListener('abort', onAbort);
+            const result = String(reader.result || '');
+            const commaIdx = result.indexOf(',');
+            resolve(commaIdx >= 0 ? result.slice(commaIdx + 1) : result);
+          };
+          reader.onerror = () => {
+            if (signal) signal.removeEventListener('abort', onAbort);
+            reject(new Error('Không thể đọc dữ liệu file âm thanh từ thiết bị.'));
+          };
+          reader.readAsDataURL(file);
+        });
       }
 
       function saveProjectToLocal() {
@@ -2661,7 +2736,7 @@
       }
 
       /* =========================================================================
-       * 12. GEMINI API KEY MANAGER & AI AUTO-SYNC (GEMINI-FLASH-LATEST)
+       * 12. GEMINI API ENGINE: AUTO-FALLBACK, 503 RETRY & ANTI-HANG TIMEOUT
        * ========================================================================= */
       function getSavedApiKey() {
         try { return (localStorage.getItem(STORAGE_API_KEY) || '').trim(); }
@@ -2672,7 +2747,7 @@
         const k = getSavedApiKey();
         if (k) {
           apiKeyStatusBadge.className = 'px-2.5 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-400/40 text-[11px] font-medium text-emerald-200';
-          apiKeyStatusBadge.textContent = `🟢 Đã lưu API Key (${k.slice(0, 6)}...) — Sẵn sàng dùng AI`;
+          apiKeyStatusBadge.textContent = `🟢 Đã lưu API Key (${k.slice(0, 6)}...) — Tự động chuyển model khi 503`;
         } else {
           apiKeyStatusBadge.className = 'px-2.5 py-1.5 rounded-xl bg-amber-500/15 border border-amber-400/35 text-[11px] font-medium text-amber-200';
           apiKeyStatusBadge.textContent = '🟡 Chưa lưu API Key cá nhân (Cần nhập khi dùng trên GitHub Pages)';
@@ -2689,6 +2764,178 @@
         setTimeout(() => inputGeminiKey.focus(), 200);
       }
 
+      /**
+       * Gọi Gemini API có sẵn:
+       * - Timeout chống treo bằng AbortController cho từng lượt gọi
+       * - Tự động thử lại khi gặp lỗi 503 / 500 / 502 / 504 / 429 hoặc timeout
+       * - Tự động chuyển sang model dự phòng trong GEMINI_MODELS
+       * - Hỗ trợ nút Hủy chủ động từ người dùng
+       */
+      async function callGeminiWithFallback({
+        apiKey,
+        payload,
+        timeoutMs = 55000,
+        maxRetriesPerModel = 2,
+        cancelSignal = null,
+        onStatus = () => {}
+      }) {
+        const retryableStatuses = new Set([429, 500, 502, 503, 504]);
+        let lastErrorMessage = 'Không thể kết nối tới máy chủ Gemini AI.';
+        let sawRateLimit = false;
+        let sawOverload503 = false;
+
+        for (let mIdx = 0; mIdx < GEMINI_MODELS.length; mIdx++) {
+          const model = GEMINI_MODELS[mIdx];
+          const nextModel = GEMINI_MODELS[mIdx + 1] || null;
+
+          for (let attempt = 0; attempt <= maxRetriesPerModel; attempt++) {
+            if (cancelSignal && cancelSignal.aborted) {
+              const err = new Error('Đã hủy theo yêu cầu người dùng.');
+              err.code = 'USER_CANCELLED';
+              throw err;
+            }
+
+            if (attempt === 0) {
+              onStatus(
+                mIdx === 0
+                  ? `Đang kết nối ${model}...`
+                  : `🔄 Chuyển sang model dự phòng ${model}...`
+              );
+            } else {
+              onStatus(`🔁 Đang thử lại ${model} (lần ${attempt}/${maxRetriesPerModel})...`);
+            }
+
+            const attemptController = new AbortController();
+            let timedOut = false;
+
+            const onUserCancel = () => attemptController.abort();
+            if (cancelSignal) cancelSignal.addEventListener('abort', onUserCancel, { once: true });
+
+            const timeoutId = setTimeout(() => {
+              timedOut = true;
+              attemptController.abort();
+            }, timeoutMs);
+
+            try {
+              const res = await fetch(getGeminiEndpoint(model), {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-goog-api-key': apiKey
+                },
+                body: JSON.stringify(payload),
+                signal: attemptController.signal
+              });
+
+              clearTimeout(timeoutId);
+              if (cancelSignal) cancelSignal.removeEventListener('abort', onUserCancel);
+
+              if (res.ok) {
+                const data = await res.json();
+                return { data, model };
+              }
+
+              const errBody = await res.json().catch(() => ({}));
+              const errMsg = errBody?.error?.message || `HTTP ${res.status}`;
+              lastErrorMessage = `[${model}] Lỗi ${res.status}: ${errMsg}`;
+
+              // Lỗi xác thực API Key -> dừng ngay, không đổi model vô ích
+              const isKeyError =
+                res.status === 401 ||
+                res.status === 403 ||
+                (res.status === 400 && /api[\s_-]?key|invalid argument.*key|permission/i.test(errMsg));
+
+              if (isKeyError) {
+                const authErr = new Error(`API Key bị từ chối (mã ${res.status}) — ${errMsg}`);
+                authErr.code = 'AUTH_ERROR';
+                throw authErr;
+              }
+
+              // Model không tồn tại / không hỗ trợ -> chuyển ngay sang model dự phòng kế tiếp
+              if (res.status === 404 || res.status === 400) {
+                if (nextModel) {
+                  onStatus(`⚠️ ${model} không khả dụng (mã ${res.status}) — Đổi sang ${nextModel}...`);
+                }
+                break;
+              }
+
+              // Lỗi tạm thời 503 / 5xx / 429 -> tự thử lại với giãn cách backoff
+              if (retryableStatuses.has(res.status)) {
+                if (res.status === 503) sawOverload503 = true;
+                if (res.status === 429) sawRateLimit = true;
+
+                if (attempt < maxRetriesPerModel) {
+                  const baseDelay = res.status === 429 ? 2500 : 1600;
+                  const delayMs = Math.round(baseDelay * Math.pow(1.7, attempt) + Math.random() * 500);
+                  const secLabel = (delayMs / 1000).toFixed(1);
+                  const reasonLabel = res.status === 503
+                    ? 'quá tải (503)'
+                    : (res.status === 429 ? 'chạm giới hạn phút (429)' : `lỗi tạm thời (${res.status})`);
+                  onStatus(`⚠️ ${model} ${reasonLabel} — Tự thử lại sau ${secLabel}s...`);
+                  await sleepWithCancel(delayMs, cancelSignal);
+                  continue;
+                }
+
+                if (nextModel) {
+                  onStatus(`⚠️ ${model} vẫn bận (mã ${res.status}) — Tự chuyển sang ${nextModel}...`);
+                  await sleepWithCancel(600, cancelSignal);
+                }
+                break;
+              }
+
+              // Các mã lỗi HTTP khác -> chuyển sang model dự phòng nếu còn
+              if (nextModel) {
+                onStatus(`⚠️ ${model} báo lỗi ${res.status} — Chuyển sang ${nextModel}...`);
+              }
+              break;
+            } catch (err) {
+              clearTimeout(timeoutId);
+              if (cancelSignal) cancelSignal.removeEventListener('abort', onUserCancel);
+
+              if (err && (err.code === 'USER_CANCELLED' || err.code === 'AUTH_ERROR')) {
+                throw err;
+              }
+              if (cancelSignal && cancelSignal.aborted) {
+                const cErr = new Error('Đã hủy theo yêu cầu người dùng.');
+                cErr.code = 'USER_CANCELLED';
+                throw cErr;
+              }
+
+              if (timedOut) {
+                lastErrorMessage = `[${model}] Hết thời gian chờ (${Math.round(timeoutMs / 1000)}s — tự ngắt chống treo).`;
+                if (attempt < maxRetriesPerModel) {
+                  onStatus(`⏱ ${model} phản hồi quá chậm — Tự thử lại chống treo...`);
+                  await sleepWithCancel(1000, cancelSignal);
+                  continue;
+                }
+                if (nextModel) {
+                  onStatus(`⏱ ${model} quá chậm — Tự động chuyển sang ${nextModel}...`);
+                }
+                break;
+              }
+
+              // Lỗi kết nối mạng
+              lastErrorMessage = `[${model}] Lỗi kết nối mạng tới máy chủ Google AI.`;
+              if (attempt < maxRetriesPerModel) {
+                const delayMs = 1500 * (attempt + 1);
+                onStatus(`🌐 Mạng chập chờn — Thử kết nối lại sau ${(delayMs / 1000).toFixed(1)}s...`);
+                await sleepWithCancel(delayMs, cancelSignal);
+                continue;
+              }
+              break;
+            }
+          }
+        }
+
+        if (sawOverload503) {
+          throw new Error(`Tất cả ${GEMINI_MODELS.length} model Gemini hiện đang quá tải (lỗi 503). Bạn đợi 20–30 giây rồi bấm lại, hoặc dùng "🎹 Căn phím" ở tab Lời & Nhịp nhé!`);
+        }
+        if (sawRateLimit) {
+          throw new Error('API Key đang chạm giới hạn lượt gọi miễn phí (mã 429) trên các model. Hãy đợi 30–60 giây rồi thử lại nhé.');
+        }
+        throw new Error(lastErrorMessage);
+      }
+
       async function testGeminiKey() {
         const key = (inputGeminiKey.value || '').trim() || getSavedApiKey();
         if (!key) {
@@ -2700,54 +2947,38 @@
         refreshApiKeyUI();
 
         apiKeyTestResult.className = 'p-2 rounded-xl bg-sky-500/15 border border-sky-400/35 text-[11px] text-sky-200';
-        apiKeyTestResult.textContent = '⏳ Đang kiểm tra kết nối tới Gemini Flash...';
+        apiKeyTestResult.textContent = '⏳ Đang kiểm tra kết nối & model dự phòng...';
         apiKeyTestResult.classList.remove('hidden');
         btnTestKey.disabled = true;
 
         try {
-          const res = await fetch(GEMINI_ENDPOINT, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-goog-api-key': key
-            },
-            body: JSON.stringify({
+          const { model } = await callGeminiWithFallback({
+            apiKey: key,
+            timeoutMs: 12000,
+            maxRetriesPerModel: 1,
+            payload: {
               contents: [{ parts: [{ text: 'Reply OK' }] }],
               generationConfig: { maxOutputTokens: 8 }
-            })
+            },
+            onStatus: (msg) => {
+              apiKeyTestResult.textContent = `⏳ ${msg}`;
+            }
           });
 
-          if (res.ok) {
-            apiKeyTestResult.className = 'p-2 rounded-xl bg-emerald-500/15 border border-emerald-400/40 text-[11px] text-emerald-200';
-            apiKeyTestResult.textContent = '✅ API Key hợp lệ! Sẵn sàng nghe nhạc và tạo lời tự động.';
-            showToast('✅ Gemini API Key hoạt động tốt!');
-          } else {
-            const errData = await res.json().catch(() => ({}));
-            const detail = errData?.error?.message ? ` — ${errData.error.message}` : '';
-            apiKeyTestResult.className = 'p-2 rounded-xl bg-rose-500/15 border border-rose-400/40 text-[11px] text-rose-200';
-            apiKeyTestResult.textContent = res.status === 429
-              ? '⚠️ Key đã vượt giới hạn gọi miễn phí trong phút này (mã 429). Đợi 30 giây rồi thử lại.'
-              : `❌ Lỗi ${res.status}${detail}`;
-          }
-        } catch (_) {
+          apiKeyTestResult.className = 'p-2 rounded-xl bg-emerald-500/15 border border-emerald-400/40 text-[11px] text-emerald-200';
+          apiKeyTestResult.textContent = `✅ API Key hợp lệ! Đã kết nối thành công với model "${model}".`;
+          showToast(`✅ Gemini API Key sẵn sàng (${model})!`);
+        } catch (err) {
           apiKeyTestResult.className = 'p-2 rounded-xl bg-rose-500/15 border border-rose-400/40 text-[11px] text-rose-200';
-          apiKeyTestResult.textContent = '❌ Không kết nối được mạng tới máy chủ Google AI.';
+          apiKeyTestResult.textContent = `❌ ${err && err.message ? err.message : 'Không kiểm tra được API Key.'}`;
         } finally {
           btnTestKey.disabled = false;
         }
       }
 
-      function bufferToBase64(buf) {
-        const bytes = new Uint8Array(buf);
-        const step = 0x8000;
-        let bin = '';
-        for (let i = 0; i < bytes.length; i += step) {
-          bin += String.fromCharCode.apply(null, bytes.subarray(i, i + step));
-        }
-        return btoa(bin);
-      }
-
       async function runAIAutoSync() {
+        if (state.aiBusy) return;
+
         if (!state.hasUserAudio || !state.userAudioFile) {
           showToast('Hãy chọn file Nhạc hoặc Video ở phía trên trước nhé!');
           return;
@@ -2777,15 +3008,18 @@
           refreshApiKeyUI();
         }
 
+        state.aiBusy = true;
+        state.aiCancelController = new AbortController();
+        const cancelSignal = state.aiCancelController.signal;
+
         btnRunAISync.disabled = true;
         aiFeedbackBox.classList.add('hidden');
         aiLoadingBox.classList.remove('hidden');
-        aiLoadingText.textContent = 'AI đang nghe và đồng bộ từng câu hát...';
+        aiLoadingText.textContent = 'Đang chuẩn bị dữ liệu âm thanh (không làm đơ máy)...';
         setPlaying(false);
 
         try {
-          const rawBuf = await file.arrayBuffer();
-          const base64Data = bufferToBase64(rawBuf);
+          const base64Data = await fileToBase64Async(file, cancelSignal);
           const mimeType = file.type && (file.type.startsWith('audio/') || file.type.startsWith('video/'))
             ? file.type : 'audio/mpeg';
 
@@ -2797,64 +3031,61 @@
             hint ? `\nLời bài hát gốc tham khảo (ưu tiên đúng chính tả này):\n"""\n${hint}\n"""` : ''
           ].join('\n');
 
-          const res = await fetch(GEMINI_ENDPOINT, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-goog-api-key': apiKey
-            },
-            body: JSON.stringify({
-              contents: [{
-                parts: [
-                  { text: promptText },
-                  { inlineData: { mimeType, data: base64Data } }
-                ]
-              }],
-              generationConfig: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                  type: 'OBJECT',
-                  properties: {
-                    filename: { type: 'STRING' },
-                    theme: { type: 'STRING', enum: ['midnight_nebula', 'sakura_rose', 'cyber_emerald', 'deep_ocean', 'sunset_gold'] },
-                    chorusStart: { type: 'NUMBER' },
-                    chorusEnd: { type: 'NUMBER' },
-                    lines: {
-                      type: 'ARRAY',
-                      items: {
-                        type: 'OBJECT',
-                        properties: {
-                          time: { type: 'NUMBER' },
-                          text: { type: 'STRING' }
-                        },
-                        required: ['time', 'text']
-                      }
+          const payload = {
+            contents: [{
+              parts: [
+                { text: promptText },
+                { inlineData: { mimeType, data: base64Data } }
+              ]
+            }],
+            generationConfig: {
+              responseMimeType: 'application/json',
+              responseSchema: {
+                type: 'OBJECT',
+                properties: {
+                  filename: { type: 'STRING' },
+                  theme: { type: 'STRING', enum: ['midnight_nebula', 'sakura_rose', 'cyber_emerald', 'deep_ocean', 'sunset_gold'] },
+                  chorusStart: { type: 'NUMBER' },
+                  chorusEnd: { type: 'NUMBER' },
+                  lines: {
+                    type: 'ARRAY',
+                    items: {
+                      type: 'OBJECT',
+                      properties: {
+                        time: { type: 'NUMBER' },
+                        text: { type: 'STRING' }
+                      },
+                      required: ['time', 'text']
                     }
-                  },
-                  required: ['filename', 'theme', 'chorusStart', 'chorusEnd', 'lines']
-                }
+                  }
+                },
+                required: ['filename', 'theme', 'chorusStart', 'chorusEnd', 'lines']
               }
-            })
+            }
+          };
+
+          const { data: json, model: usedModel } = await callGeminiWithFallback({
+            apiKey,
+            payload,
+            timeoutMs: 55000,
+            maxRetriesPerModel: 2,
+            cancelSignal,
+            onStatus: (statusMsg) => {
+              aiLoadingText.textContent = statusMsg;
+            }
           });
 
-          if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
-            const detail = errData?.error?.message ? ` — ${errData.error.message}` : '';
-            if (res.status === 400 || res.status === 403) {
-              highlightApiKeyBox();
-              throw new Error(`API Key bị từ chối (mã ${res.status})${detail}`);
-            }
-            if (res.status === 429) {
-              throw new Error('API Key đang vượt giới hạn lượt gọi miễn phí (mã 429). Bạn đợi 30 giây rồi bấm thử lại nhé.');
-            }
-            throw new Error(`Máy chủ AI phản hồi mã lỗi ${res.status}${detail}`);
-          }
-
-          const json = await res.json();
           const rawText = json?.candidates?.[0]?.content?.parts?.[0]?.text;
           if (!rawText) throw new Error('AI không trả về dữ liệu lời bài hát hợp lệ.');
 
-          const parsed = JSON.parse(rawText.replace(/^```json\s*/i, '').replace(/```$/i, '').trim());
+          const cleanedJson = rawText.replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
+          let parsed;
+          try {
+            parsed = JSON.parse(cleanedJson);
+          } catch (_) {
+            throw new Error('Dữ liệu JSON từ AI chưa đúng định dạng. Bạn hãy bấm chạy lại nhé!');
+          }
+
           if (!Array.isArray(parsed.lines) || !parsed.lines.length) {
             throw new Error('AI không nghe rõ giọng hát trong đoạn này. Bạn có thể dùng "🎹 Căn phím" ở tab Lời & Nhịp!');
           }
@@ -2904,17 +3135,28 @@
           saveProjectToLocal();
 
           aiFeedbackBox.className = 'p-3 rounded-xl bg-emerald-500/15 border border-emerald-400/40 text-xs text-emerald-200';
-          aiFeedbackBox.textContent = `✅ Đã tạo & đồng bộ ${targetLines.length} câu hát cho "${tsName}"!`;
+          aiFeedbackBox.textContent = `✅ Đã tạo & đồng bộ ${targetLines.length} câu hát cho "${tsName}" (Model: ${usedModel})!`;
           aiFeedbackBox.classList.remove('hidden');
 
           closeMobileDrawer();
           seekTo(0);
           setPlaying(true, true);
         } catch (err) {
-          aiFeedbackBox.className = 'p-3 rounded-xl bg-rose-500/15 border border-rose-400/40 text-xs text-rose-200';
-          aiFeedbackBox.textContent = err && err.message ? err.message : 'Có lỗi khi AI xử lý âm thanh.';
-          aiFeedbackBox.classList.remove('hidden');
+          if (err && err.code === 'AUTH_ERROR') {
+            highlightApiKeyBox();
+          }
+          if (err && err.code === 'USER_CANCELLED') {
+            aiFeedbackBox.className = 'p-3 rounded-xl bg-amber-500/15 border border-amber-400/40 text-xs text-amber-200';
+            aiFeedbackBox.textContent = '⏹ Đã hủy tiến trình AI.';
+            aiFeedbackBox.classList.remove('hidden');
+          } else {
+            aiFeedbackBox.className = 'p-3 rounded-xl bg-rose-500/15 border border-rose-400/40 text-xs text-rose-200';
+            aiFeedbackBox.textContent = err && err.message ? err.message : 'Có lỗi khi AI xử lý âm thanh.';
+            aiFeedbackBox.classList.remove('hidden');
+          }
         } finally {
+          state.aiBusy = false;
+          state.aiCancelController = null;
           aiLoadingBox.classList.add('hidden');
           btnRunAISync.disabled = false;
         }
@@ -3039,7 +3281,8 @@
           if (state.isPlaying && !isUserScrubbing) {
             if (state.hasUserAudio) {
               if (!audioPlayer.paused && !audioPlayer.ended) {
-                const rawT = Math.max(0, (audioPlayer.currentTime || 0) - state.trimStart);
+                const mediaNow = Number.isFinite(audioPlayer.currentTime) ? audioPlayer.currentTime : 0;
+                const rawT = Math.max(0, mediaNow - state.trimStart);
                 if (Math.abs(rawT - state.lastSyncMedia) > 0.001) {
                   state.lastSyncMedia = rawT;
                   state.lastSyncWall = now;
@@ -3293,6 +3536,13 @@
       });
 
       btnRunAISync.addEventListener('click', runAIAutoSync);
+
+      btnCancelAI.addEventListener('click', () => {
+        if (state.aiCancelController) {
+          state.aiCancelController.abort();
+          showToast('⏹ Đang hủy yêu cầu AI...');
+        }
+      });
 
       // Offline Lyric & Tap-to-Sync Events
       btnTapStartReset.addEventListener('click', () => {
