@@ -906,6 +906,15 @@
     .rec-dot {
       animation: recPulse 1s ease-in-out infinite;
     }
+
+    @keyframes keyBoxFocusPulse {
+      0% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.75); border-color: rgba(251, 191, 36, 0.95); }
+      50% { box-shadow: 0 0 0 6px rgba(251, 191, 36, 0.22); border-color: rgba(251, 191, 36, 1); }
+      100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+    }
+    .api-key-highlight-ring {
+      animation: keyBoxFocusPulse 1.15s ease-out 2;
+    }
   </style>
 </head>
 <body>
@@ -1314,6 +1323,105 @@
                 ></textarea>
               </div>
             </details>
+
+            <!-- 🔑 KHU VỰC QUẢN LÝ GEMINI API KEY (CHẠY AI TRÊN GITHUB PAGES) -->
+            <div
+              id="geminiApiKeySection"
+              class="p-3.5 rounded-2xl bg-slate-950/70 border border-amber-400/35 space-y-2.5 transition"
+            >
+              <div class="flex items-center justify-between gap-2">
+                <h3 class="text-xs font-bold text-white flex items-center gap-1.5">
+                  <span>🔑</span>
+                  <span>Gemini API Key (Dùng AI trên GitHub Pages)</span>
+                </h3>
+              </div>
+
+              <!-- Huy hiệu trạng thái Key trực quan -->
+              <div
+                id="apiKeyStatusBadge"
+                class="px-2.5 py-1.5 rounded-xl bg-amber-500/15 border border-amber-400/35 text-[11px] font-medium text-amber-200 leading-snug"
+              >
+                🟡 Chưa nhập API Key (Cần nhập khi chạy trên GitHub Pages)
+              </div>
+
+              <!-- Ô nhập API Key + Nút Hiện/Ẩn -->
+              <div class="flex items-center gap-1.5">
+                <input
+                  id="inputGeminiApiKey"
+                  type="password"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="Dán mã AIza... từ Google AI Studio vào đây"
+                  class="flex-1 min-w-0 px-3 py-2 rounded-xl bg-white/[0.06] border border-white/15 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                />
+                <button
+                  id="btnToggleApiKeyVis"
+                  type="button"
+                  title="Hiện / Ẩn mã API Key"
+                  class="shrink-0 px-2.5 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] border border-white/10 text-[11px] font-medium text-slate-200 transition"
+                >
+                  👁️ Hiện
+                </button>
+              </div>
+
+              <!-- Các nút thao tác Lưu / Kiểm tra / Xóa Key -->
+              <div class="grid grid-cols-3 gap-1.5">
+                <button
+                  id="btnSaveApiKey"
+                  type="button"
+                  class="py-2 px-2 rounded-xl bg-emerald-500/25 hover:bg-emerald-500/35 border border-emerald-400/40 text-emerald-200 text-[11px] font-semibold active:scale-95 transition"
+                >
+                  💾 Lưu Key
+                </button>
+                <button
+                  id="btnTestApiKey"
+                  type="button"
+                  class="py-2 px-2 rounded-xl bg-sky-500/25 hover:bg-sky-500/35 border border-sky-400/40 text-sky-200 text-[11px] font-semibold active:scale-95 transition"
+                >
+                  ⚡ Kiểm tra Key
+                </button>
+                <button
+                  id="btnClearApiKey"
+                  type="button"
+                  class="py-2 px-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-400/35 text-rose-200 text-[11px] font-semibold active:scale-95 transition"
+                >
+                  🗑️ Xóa Key
+                </button>
+              </div>
+
+              <!-- Kết quả kiểm tra kết nối Key -->
+              <div id="apiKeyTestFeedback" class="hidden p-2 rounded-xl text-[11px] leading-relaxed"></div>
+
+              <!-- Nút lấy Key miễn phí + Hướng dẫn 3 bước -->
+              <div class="pt-1.5 border-t border-white/[0.08] space-y-2">
+                <a
+                  href="https://aistudio.google.com/apikey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="w-full py-2 px-3 rounded-xl bg-white/[0.07] hover:bg-white/[0.13] border border-white/15 text-indigo-200 text-[11px] font-semibold flex items-center justify-center gap-1.5 transition"
+                >
+                  <span>🔗 Lấy API Key miễn phí tại Google AI Studio</span>
+                  <span>↗</span>
+                </a>
+                <ol class="text-[10.5px] text-slate-400 space-y-1 pl-4 list-decimal leading-relaxed">
+                  <li>Bấm nút <strong class="text-slate-200">Lấy API Key miễn phí</strong> ở trên và đăng nhập Gmail.</li>
+                  <li>Bấm <strong class="text-slate-200">Create API key</strong> rồi sao chép mã bắt đầu bằng <code class="text-amber-300">AIza...</code></li>
+                  <li>Dán vào ô trên (tự lưu trên trình duyệt) và bấm <strong class="text-slate-200">AI Tự nghe</strong>.</li>
+                </ol>
+              </div>
+            </div>
+
+            <!-- Thanh trạng thái Key nhanh ngay cạnh nút AI -->
+            <div class="flex items-center justify-between gap-2 px-1">
+              <span class="text-[11px] text-slate-400">Trạng thái AI Audio:</span>
+              <button
+                id="btnQuickKeyBadge"
+                type="button"
+                class="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/35 text-[10.5px] font-semibold text-amber-200 transition"
+              >
+                🔑 Chưa có Key (Bấm để nhập)
+              </button>
+            </div>
 
             <!-- Nút CTA chính chạy AI Auto-Sync -->
             <button
@@ -1994,6 +2102,19 @@
       const previewTrimIcon     = document.getElementById('previewTrimIcon');
       const previewTrimText     = document.getElementById('previewTrimText');
       const rawLyricsHint       = document.getElementById('rawLyricsHint');
+
+      // Tham chiếu khu vực Gemini API Key
+      const GEMINI_KEY_STORAGE_KEY = 'lyric_studio_gemini_api_key';
+      const geminiApiKeySection    = document.getElementById('geminiApiKeySection');
+      const apiKeyStatusBadge      = document.getElementById('apiKeyStatusBadge');
+      const inputGeminiApiKey      = document.getElementById('inputGeminiApiKey');
+      const btnToggleApiKeyVis     = document.getElementById('btnToggleApiKeyVis');
+      const btnSaveApiKey          = document.getElementById('btnSaveApiKey');
+      const btnTestApiKey          = document.getElementById('btnTestApiKey');
+      const btnClearApiKey         = document.getElementById('btnClearApiKey');
+      const apiKeyTestFeedback     = document.getElementById('apiKeyTestFeedback');
+      const btnQuickKeyBadge       = document.getElementById('btnQuickKeyBadge');
+
       const btnRunAIAutoSync    = document.getElementById('btnRunAIAutoSync');
       const aiProgressBox       = document.getElementById('aiProgressBox');
       const aiProgressTitle     = document.getElementById('aiProgressTitle');
@@ -4522,9 +4643,239 @@
       window.addEventListener('resize', layoutResponsiveStage);
 
       /* =========================================================================
-       * 16. KHỞI CHẠY STUDIO
+       * 11. QUẢN LÝ GEMINI API KEY & AI AUTO-SYNC (GEMINI-2.5-FLASH)
        * ========================================================================= */
+      function getSavedGeminiApiKey() {
+        try {
+          return (localStorage.getItem(GEMINI_KEY_STORAGE_KEY) || '').trim();
+        } catch (_) {
+          return '';
+        }
+      }
+
+      function updateGeminiApiKeyUI() {
+        const savedKey = getSavedGeminiApiKey();
+        if (savedKey) {
+          apiKeyStatusBadge.className = 'px-2.5 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-400/40 text-[11px] font-medium text-emerald-200 leading-snug';
+          apiKeyStatusBadge.textContent = '🟢 Đã lưu API Key cá nhân (Sẵn sàng chạy trên GitHub Pages)';
+          btnQuickKeyBadge.className = 'px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/35 text-[10.5px] font-semibold text-emerald-200 transition';
+          btnQuickKeyBadge.textContent = `🔑 Đã lưu Key (${savedKey.slice(0, 6)}...)`;
+        } else {
+          apiKeyStatusBadge.className = 'px-2.5 py-1.5 rounded-xl bg-amber-500/15 border border-amber-400/35 text-[11px] font-medium text-amber-200 leading-snug';
+          apiKeyStatusBadge.textContent = '🟡 Chưa nhập API Key (Cần nhập khi chạy trên GitHub Pages)';
+          btnQuickKeyBadge.className = 'px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/35 text-[10.5px] font-semibold text-amber-200 transition';
+          btnQuickKeyBadge.textContent = '🔑 Chưa có Key (Bấm để nhập)';
+        }
+      }
+
+      function saveGeminiApiKeyValue(rawVal, silent = false) {
+        const cleaned = String(rawVal || '').trim();
+        try {
+          if (cleaned) {
+            localStorage.setItem(GEMINI_KEY_STORAGE_KEY, cleaned);
+          } else {
+            localStorage.removeItem(GEMINI_KEY_STORAGE_KEY);
+          }
+        } catch (_) {}
+        updateGeminiApiKeyUI();
+        if (!silent) {
+          if (cleaned) {
+            showToast('💾 Đã lưu Gemini API Key vào trình duyệt!');
+          } else {
+            showToast('Đã xóa API Key trống.');
+          }
+        }
+      }
+
+      function focusGeminiApiKeyBox() {
+        switchInspectorTab('music');
+        if (window.innerWidth < 1024) {
+          openMobileSheet('music');
+        } else if (state.sidebarCollapsed) {
+          state.sidebarCollapsed = false;
+          document.body.classList.remove('sidebar-collapsed');
+          sidebarToggleLabel.textContent = 'Ẩn bảng';
+          setTimeout(() => layoutResponsiveStage(), 330);
+        }
+        geminiApiKeySection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        geminiApiKeySection.classList.remove('api-key-highlight-ring');
+        void geminiApiKeySection.offsetWidth;
+        geminiApiKeySection.classList.add('api-key-highlight-ring');
+        setTimeout(() => inputGeminiApiKey.focus(), 220);
+      }
+
+      async function testGeminiApiKeyConnection() {
+        const candidateKey = (inputGeminiApiKey.value || '').trim() || getSavedGeminiApiKey();
+        if (candidateKey) {
+          saveGeminiApiKeyValue(candidateKey, true);
+        }
+
+        apiKeyTestFeedback.className = 'p-2 rounded-xl bg-sky-500/15 border border-sky-400/35 text-[11px] text-sky-200 leading-relaxed';
+        apiKeyTestFeedback.textContent = '⏳ Đang kiểm tra kết nối tới Gemini 2.5 Flash...';
+        apiKeyTestFeedback.classList.remove('hidden');
+        btnTestApiKey.disabled = true;
+
+        try {
+          const apiKey = candidateKey || "";
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ role: 'user', parts: [{ text: 'Reply OK' }] }],
+              generationConfig: { maxOutputTokens: 8 }
+            })
+          });
+
+          if (res.ok) {
+            apiKeyTestFeedback.className = 'p-2 rounded-xl bg-emerald-500/15 border border-emerald-400/40 text-[11px] text-emerald-200 leading-relaxed';
+            apiKeyTestFeedback.textContent = '✅ Kết nối thành công! API Key hợp lệ và sẵn sàng nghe nhạc trên GitHub Pages.';
+            showToast('✅ Gemini API Key hoạt động tốt!');
+          } else {
+            let serverMsg = '';
+            try {
+              const errJson = await res.json();
+              serverMsg = errJson?.error?.message || '';
+            } catch (_) {}
+
+            apiKeyTestFeedback.className = 'p-2 rounded-xl bg-rose-500/15 border border-rose-400/40 text-[11px] text-rose-200 leading-relaxed';
+            if (res.status === 400 || res.status === 403) {
+              apiKeyTestFeedback.textContent = `❌ Key chưa hợp lệ hoặc bị từ chối (mã ${res.status}). Hãy kiểm tra lại mã AIza... từ Google AI Studio.${serverMsg ? ` (${serverMsg})` : ''}`;
+            } else if (res.status === 429) {
+              apiKeyTestFeedback.textContent = '⚠️ Key đã vượt giới hạn lượt gọi miễn phí trong phút này (mã 429). Bạn đợi 30 giây rồi thử lại nhé.';
+            } else {
+              apiKeyTestFeedback.textContent = `⚠️ Không kết nối được (mã ${res.status}). ${serverMsg}`;
+            }
+          }
+        } catch (err) {
+          apiKeyTestFeedback.className = 'p-2 rounded-xl bg-rose-500/15 border border-rose-400/40 text-[11px] text-rose-200 leading-relaxed';
+          apiKeyTestFeedback.textContent = '❌ Lỗi kết nối mạng khi kiểm tra API Key. Vui lòng kiểm tra Internet và thử lại.';
+        } finally {
+          btnTestApiKey.disabled = false;
+        }
+      }
+
+      function arrayBufferToBase64(buffer) {
+// ... existing code ... -->
+      async function callGeminiWithRetry(payload) {
+        const userSavedKey = getSavedGeminiApiKey();
+        const apiKey = userSavedKey || "";
+        const modelsToTry = ['gemini-2.5-flash', 'gemini-3-flash-preview'];
+        let lastError = null;
+
+        for (const modelName of modelsToTry) {
+          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+          for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+              const res = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+              });
+
+              if (res.ok) {
+                const json = await res.json();
+                const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (text) return text;
+                throw new Error('Phản hồi AI không chứa nội dung JSON hợp lệ.');
+              }
+
+              // Nếu model 404 thì chuyển sang model dự phòng tiếp theo
+              if (res.status === 404) {
+                lastError = new Error(`Model ${modelName} không khả dụng (404).`);
+                break;
+              }
+
+              // Lỗi 400 / 403 do thiếu API Key trên GitHub Pages hoặc Key sai -> báo ngay để người dùng dán Key
+              if (res.status === 400 || res.status === 403) {
+                let detail = '';
+                try {
+                  const errData = await res.json();
+                  detail = errData?.error?.message || '';
+                } catch (_) {}
+
+                const authErr = new Error(
+                  userSavedKey
+                    ? `API Key cá nhân bị từ chối hoặc chưa đúng định dạng (mã ${res.status}). Bạn hãy kiểm tra lại mã AIza... trong khung Gemini API Key ở trên nhé!${detail ? ` (${detail})` : ''}`
+                    : `Bạn đang chạy trên GitHub Pages nên cần nhập Gemini API Key miễn phí (mã ${res.status}). Hãy lấy mã AIza... miễn phí tại Google AI Studio và dán vào khung phía trên!`
+                );
+                authErr.isAuthOrKeyError = true;
+                throw authErr;
+              }
+
+              lastError = new Error(`Máy chủ AI đang bận (mã ${res.status})`);
+              await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)));
+            } catch (err) {
+              if (err && err.isAuthOrKeyError) throw err;
+              lastError = err;
+              await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)));
+            }
+          }
+        }
+        throw lastError || new Error('Không thể kết nối tới AI lúc này.');
+      }
+
+      function setAIProgress(stepText, subText, percent) {
+// ... existing code ... -->
+          aiProgressBox.classList.add('hidden');
+          aiErrorText.textContent = err && err.message
+            ? err.message
+            : 'Có lỗi khi AI phân tích âm thanh. Vui lòng thử lại hoặc cắt đoạn ngắn hơn (30–45s).';
+          aiErrorBox.classList.remove('hidden');
+
+          if (err && err.isAuthOrKeyError) {
+            focusGeminiApiKeyBox();
+          }
+        } finally {
+          state.isAnalyzingAI = false;
+          btnRunAIAutoSync.disabled = false;
+        }
+      }
+// ... existing code ... -->
+      // Quản lý sự kiện Gemini API Key
+      inputGeminiApiKey.addEventListener('input', () => {
+        saveGeminiApiKeyValue(inputGeminiApiKey.value, true);
+      });
+
+      btnToggleApiKeyVis.addEventListener('click', () => {
+        const isPass = inputGeminiApiKey.type === 'password';
+        inputGeminiApiKey.type = isPass ? 'text' : 'password';
+        btnToggleApiKeyVis.textContent = isPass ? '🙈 Ẩn' : '👁️ Hiện';
+      });
+
+      btnSaveApiKey.addEventListener('click', () => {
+        const val = (inputGeminiApiKey.value || '').trim();
+        if (!val) {
+          showToast('⚠️ Bạn chưa dán mã API Key vào ô nhập!');
+          inputGeminiApiKey.focus();
+          return;
+        }
+        saveGeminiApiKeyValue(val, false);
+        apiKeyTestFeedback.classList.add('hidden');
+      });
+
+      btnTestApiKey.addEventListener('click', testGeminiApiKeyConnection);
+
+      btnClearApiKey.addEventListener('click', () => {
+        inputGeminiApiKey.value = '';
+        saveGeminiApiKeyValue('', true);
+        apiKeyTestFeedback.classList.add('hidden');
+        showToast('🗑️ Đã xóa Gemini API Key khỏi trình duyệt.');
+      });
+
+      btnQuickKeyBadge.addEventListener('click', focusGeminiApiKeyBox);
+
+      // AI Auto-Sync
+      btnRunAIAutoSync.addEventListener('click', runAIAutoSync);
+// ... existing code ... -->
       window.addEventListener('load', () => {
+        const existingKey = getSavedGeminiApiKey();
+        if (existingKey) {
+          inputGeminiApiKey.value = existingKey;
+        }
+        updateGeminiApiKeyUI();
+
         syncAppearanceInputsFromState();
         rebuildParsedLines();
         renderLyricsEditorList();
