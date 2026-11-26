@@ -964,8 +964,8 @@
     <!-- 3 Tabs Navigation -->
     <div class="px-3.5 pt-3 pb-2.5 border-b border-white/[0.08] shrink-0">
       <div class="flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.08]" role="tablist">
-        <button type="button" class="tab-btn active" data-tab="music">🎵 Nhạc & AI</button>
-        <button type="button" class="tab-btn" data-tab="lyrics">📝 Lời & Nhịp</button>
+        <button type="button" class="tab-btn active" data-tab="music">🎵 Nhạc &amp; AI</button>
+        <button type="button" class="tab-btn" data-tab="lyrics">📝 Lời &amp; Nhịp</button>
         <button type="button" class="tab-btn" data-tab="look">🎨 Giao diện 3D</button>
       </div>
     </div>
@@ -981,7 +981,7 @@
         <div class="p-3.5 rounded-2xl border border-dashed border-indigo-400/45 bg-indigo-500/[0.07] space-y-2.5">
           <div class="flex items-center justify-between">
             <span class="text-xs font-bold text-white">Chọn nhạc / video từ thiết bị</span>
-            <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold">iOS & Android OK</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold">iOS &amp; Android OK</span>
           </div>
 
           <label class="file-label w-full py-3 px-3.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:brightness-110 active:scale-[0.98] text-white font-bold text-xs shadow-lg transition">
@@ -1059,7 +1059,7 @@
               type="password"
               autocomplete="off"
               spellcheck="false"
-              placeholder="Dán mã AIza... của bạn vào đây"
+              placeholder="Dán Gemini API Key từ Google AI Studio vào đây"
               class="flex-1 min-w-0 px-3 py-2 rounded-xl bg-white/[0.06] border border-white/15 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
             />
             <button id="btnToggleKeyEye" type="button" class="shrink-0 px-2.5 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] border border-white/10 text-[11px] text-slate-200">
@@ -1299,6 +1299,7 @@
        * ========================================================================= */
       const STORAGE_API_KEY = 'lyric_studio_gemini_api_key';
       const STORAGE_PROJECT_KEY = 'lyric_studio_project_v1';
+      const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
 
       const DEFAULT_SCRIPT = [
         '[00:00.30] Nói chung anh chỉ là [thuốc an thần]',
@@ -2660,7 +2661,7 @@
       }
 
       /* =========================================================================
-       * 12. GEMINI API KEY MANAGER & AI AUTO-SYNC (GEMINI-2.5-FLASH)
+       * 12. GEMINI API KEY MANAGER & AI AUTO-SYNC (GEMINI-FLASH-LATEST)
        * ========================================================================= */
       function getSavedApiKey() {
         try { return (localStorage.getItem(STORAGE_API_KEY) || '').trim(); }
@@ -2699,17 +2700,19 @@
         refreshApiKeyUI();
 
         apiKeyTestResult.className = 'p-2 rounded-xl bg-sky-500/15 border border-sky-400/35 text-[11px] text-sky-200';
-        apiKeyTestResult.textContent = '⏳ Đang kiểm tra kết nối tới Gemini 2.5 Flash...';
+        apiKeyTestResult.textContent = '⏳ Đang kiểm tra kết nối tới Gemini Flash...';
         apiKeyTestResult.classList.remove('hidden');
         btnTestKey.disabled = true;
 
         try {
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(key)}`;
-          const res = await fetch(url, {
+          const res = await fetch(GEMINI_ENDPOINT, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'X-goog-api-key': key
+            },
             body: JSON.stringify({
-              contents: [{ role: 'user', parts: [{ text: 'Reply OK' }] }],
+              contents: [{ parts: [{ text: 'Reply OK' }] }],
               generationConfig: { maxOutputTokens: 8 }
             })
           });
@@ -2719,10 +2722,12 @@
             apiKeyTestResult.textContent = '✅ API Key hợp lệ! Sẵn sàng nghe nhạc và tạo lời tự động.';
             showToast('✅ Gemini API Key hoạt động tốt!');
           } else {
+            const errData = await res.json().catch(() => ({}));
+            const detail = errData?.error?.message ? ` — ${errData.error.message}` : '';
             apiKeyTestResult.className = 'p-2 rounded-xl bg-rose-500/15 border border-rose-400/40 text-[11px] text-rose-200';
             apiKeyTestResult.textContent = res.status === 429
               ? '⚠️ Key đã vượt giới hạn gọi miễn phí trong phút này (mã 429). Đợi 30 giây rồi thử lại.'
-              : `❌ Key bị từ chối (mã ${res.status}). Hãy kiểm tra lại mã AIza... từ Google AI Studio.`;
+              : `❌ Lỗi ${res.status}${detail}`;
           }
         } catch (_) {
           apiKeyTestResult.className = 'p-2 rounded-xl bg-rose-500/15 border border-rose-400/40 text-[11px] text-rose-200';
@@ -2792,13 +2797,14 @@
             hint ? `\nLời bài hát gốc tham khảo (ưu tiên đúng chính tả này):\n"""\n${hint}\n"""` : ''
           ].join('\n');
 
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
-          const res = await fetch(url, {
+          const res = await fetch(GEMINI_ENDPOINT, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'X-goog-api-key': apiKey
+            },
             body: JSON.stringify({
               contents: [{
-                role: 'user',
                 parts: [
                   { text: promptText },
                   { inlineData: { mimeType, data: base64Data } }
@@ -2832,16 +2838,16 @@
           });
 
           if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            const detail = errData?.error?.message ? ` — ${errData.error.message}` : '';
             if (res.status === 400 || res.status === 403) {
               highlightApiKeyBox();
-              throw new Error(
-                `API Key cá nhân bị từ chối (mã ${res.status}). Vui lòng kiểm tra lại mã AIza... trong khung Gemini API Key ở trên.`
-              );
+              throw new Error(`API Key bị từ chối (mã ${res.status})${detail}`);
             }
             if (res.status === 429) {
               throw new Error('API Key đang vượt giới hạn lượt gọi miễn phí (mã 429). Bạn đợi 30 giây rồi bấm thử lại nhé.');
             }
-            throw new Error(`Máy chủ AI phản hồi mã lỗi ${res.status}. Vui lòng thử lại sau giây lát.`);
+            throw new Error(`Máy chủ AI phản hồi mã lỗi ${res.status}${detail}`);
           }
 
           const json = await res.json();
